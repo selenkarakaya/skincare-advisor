@@ -1,12 +1,13 @@
 import spacy
 import re
 
+
 # NLP modelini yükleyelim
 nlp = spacy.load("en_core_web_sm")
 
 # Anahtar kelimeler ve cilt bakım sorunlarına yönelik kurallar
 SKINCARE_KEYWORDS = {
-    "sensitive": ["sensitive", "irritated", "reactive", "allergic"],
+    "sensitive": ["sensitive", "irritated", "reactive", "allergic", "itchy"],
     "acne_prone": ["acne", "pimples", "breakouts", "blemishes", "zits", "spots", "acne-prone"],
     "aging": ["aging", "wrinkles", "fine lines", "lines", "sagging", "age spots"],
     "dry": ["dry", "flaky", "rough", "parched"],
@@ -19,81 +20,119 @@ SKINCARE_KEYWORDS = {
 }
 
 # Cilt bakım kuralları ve içerikleri
+
 SKINCARE_RULES = {
     "sensitive": {
-        "rule": "For sensitive skin, focus on barrier-repairing and soothing ingredients. Use gentle cleansers like micellar water or cream cleansers. Look for calming ingredients such as aloe vera, centella asiatica, chamomile, and oat extract. Avoid harsh exfoliants, alcohol, and artificial fragrances. Use products with ceramides, glycerin, and hyaluronic acid to maintain hydration without irritation.",
+        "rule": "For sensitive skin, prioritize gentle, barrier-repairing ingredients. Use mild cleansers like micellar water or cream-based formulas. Look for soothing agents such as aloe vera, centella asiatica, chamomile, and oat extract. Hydration is key, so incorporate ceramides, glycerin, and hyaluronic acid.",
         "ingredients": [
-            "ceramides", "glycerin", "hyaluronic acid", "aloe vera", "centella asiatica",
-            "chamomile", "oat extract", "micellar water", "cream cleansers"
+            "ceramides", "glycerin", "hyaluronic acid", "aloe vera", 
+            "centella asiatica", "chamomile", "oat extract", 
+            "micellar water", "cream cleanser"
+        ],
+        "avoid": [
+            "alcohol", "fragrance", "harsh exfoliants", "sulfates", "essential oils"
         ]
     },
     "acne_prone": {
-        "rule": "For acne-prone skin, prioritize ingredients with antibacterial and anti-inflammatory properties. Salicylic acid (BHA) helps unclog pores and reduce breakouts. Benzoyl peroxide is effective against acne-causing bacteria. Retinoids (like adapalene or retinol) promote cell turnover to prevent clogged pores. Niacinamide can help reduce inflammation and regulate sebum production. Avoid comedogenic ingredients and focus on non-comedogenic, lightweight products.",
+        "rule": "For acne-prone skin, use antibacterial and oil-regulating ingredients. Salicylic acid (BHA) helps unclog pores, while benzoyl peroxide fights acne-causing bacteria. Retinoids (retinol, adapalene) accelerate cell turnover to prevent breakouts. Niacinamide reduces inflammation and controls sebum. Stick to non-comedogenic, lightweight formulas.",
         "ingredients": [
-            "salicylic acid", "benzoyl peroxide", "retinol", "adapalene", "niacinamide",
-            "tea tree oil", "witch hazel", "zinc", "benzoyl peroxide"
+            "salicylic acid", "benzoyl peroxide", "retinol", "adapalene", 
+            "niacinamide", "tea tree oil", "witch hazel", "zinc"
+        ],
+        "avoid": [
+            "heavy oils", "coconut oil", "shea butter", "alcohol", "fragrance", "occlusive ingredients"
         ]
     },
     "dry": {
-        "rule": "For dry skin, focus on hydrating and nourishing ingredients. Use rich moisturizers containing ceramides, hyaluronic acid, glycerin, and squalane. Incorporate oils like jojoba, argan, or rosehip oil for extra moisture. Avoid harsh cleansers and exfoliants that can strip your skin's natural oils. Use hydrating serums and apply occlusives like petrolatum or shea butter to lock in moisture.",
+        "rule": "For dry skin, focus on deep hydration and moisture retention. Use rich moisturizers with ceramides, hyaluronic acid, and glycerin. Oils like jojoba, argan, and rosehip provide nourishment. Avoid harsh cleansers and opt for hydrating serums. Occlusives like petrolatum and shea butter help lock in moisture.",
         "ingredients": [
-            "ceramides", "hyaluronic acid", "glycerin", "squalane", "jojoba oil", 
-            "argan oil", "rosehip oil", "petrolatum", "shea butter", "hydrating serums"
+            "ceramides", "hyaluronic acid", "glycerin", "squalane", 
+            "jojoba oil", "argan oil", "rosehip oil", 
+            "petrolatum", "shea butter", "hydrating serums"
+        ],
+        "avoid": [
+            "foaming cleansers", "alcohol-based toners", "strong exfoliants", "clay masks"
         ]
     },
     "oily": {
-        "rule": "For oily skin, look for lightweight, non-comedogenic products. Use water-based moisturizers with ingredients like niacinamide, which helps regulate oil production, and salicylic acid to keep pores clear. Gel-based cleansers and products containing tea tree oil, witch hazel, and zinc are also beneficial. Avoid heavy creams and oils that may clog pores.",
+        "rule": "For oily skin, choose lightweight, oil-controlling products. Water-based moisturizers and gel cleansers are ideal. Niacinamide regulates oil production, while salicylic acid keeps pores clear. Tea tree oil and witch hazel help reduce excess shine. Avoid heavy creams and comedogenic oils.",
         "ingredients": [
-            "niacinamide", "salicylic acid", "tea tree oil", "witch hazel", "zinc",
-            "water-based moisturizers", "gel-based cleansers"
+            "niacinamide", "salicylic acid", "tea tree oil", 
+            "witch hazel", "zinc", "water-based moisturizers", 
+            "gel-based cleansers"
+        ],
+        "avoid": [
+            "heavy oils", "coconut oil", "thick creams", "alcohol", "sulfates"
         ]
     },
     "combination": {
-        "rule": "For combination skin, balance is key. Use lightweight, hydrating products for dry areas and oil-controlling ingredients for the T-zone. Hyaluronic acid, niacinamide, and gentle exfoliants like lactic acid are great choices. Multi-masking can also help address different skin needs simultaneously.",
+        "rule": "For combination skin, balance hydration and oil control. Use lightweight moisturizers and hydrating serums. Niacinamide and lactic acid help regulate oil in the T-zone while maintaining moisture for dry areas. Multi-masking can target different skin concerns simultaneously.",
         "ingredients": [
-            "hyaluronic acid", "niacinamide", "lactic acid", "gentle exfoliants", "lightweight moisturizers"
+            "hyaluronic acid", "niacinamide", "lactic acid", 
+            "gentle exfoliants", "lightweight moisturizers"
+        ],
+        "avoid": [
+            "harsh cleansers", "alcohol", "heavy occlusives", "strong acids"
         ]
     },
     "hyperpigmentation": {
-        "rule": "For hyperpigmentation, focus on brightening and exfoliating ingredients. Vitamin C (ascorbic acid) helps reduce dark spots and evens skin tone. Niacinamide can reduce pigmentation and improve skin barrier function. Alpha arbutin, tranexamic acid, and licorice root extract are also effective. Chemical exfoliants like AHAs (glycolic acid, lactic acid) can promote cell turnover. Always use sunscreen to prevent further pigmentation.",
+        "rule": "For hyperpigmentation, focus on brightening and exfoliating ingredients. Vitamin C and niacinamide help even out skin tone, while alpha arbutin and tranexamic acid reduce dark spots. AHAs like glycolic acid and lactic acid promote cell turnover. Daily SPF is essential to prevent further discoloration.",
         "ingredients": [
-            "vitamin C", "ascorbic acid", "niacinamide", "alpha arbutin", "tranexamic acid",
-            "licorice root extract", "glycolic acid", "lactic acid", "sunscreen"
+            "vitamin C", "ascorbic acid", "niacinamide", 
+            "alpha arbutin", "tranexamic acid", "licorice root extract", 
+            "glycolic acid", "lactic acid", "sunscreen"
+        ],
+        "avoid": [
+            "harsh physical scrubs", "alcohol", "fragrance", "lemon juice", "essential oils"
         ]
     },
     "aging": {
-        "rule": "For aging skin, focus on ingredients that promote collagen production and improve skin texture. Retinoids (retinol, tretinoin) are the gold standard for anti-aging. Peptides, antioxidants (such as vitamin C and E), and niacinamide can help reduce fine lines and wrinkles. Hyaluronic acid and ceramides maintain hydration and plump the skin. Avoid excessive exfoliation, which can make skin appear thinner.",
+        "rule": "For aging skin, use collagen-boosting and antioxidant-rich ingredients. Retinoids (retinol, tretinoin) are key for reducing fine lines. Peptides, vitamin C, and vitamin E improve skin texture and firmness. Hydrating agents like hyaluronic acid and ceramides help maintain skin elasticity.",
         "ingredients": [
-            "retinol", "tretinoin", "peptides", "vitamin C", "vitamin E", "niacinamide",
-            "hyaluronic acid", "ceramides"
+            "retinol", "tretinoin", "peptides", "vitamin C", 
+            "vitamin E", "niacinamide", "hyaluronic acid", "ceramides"
+        ],
+        "avoid": [
+            "harsh exfoliants", "alcohol", "fragrance", "over-exfoliation"
         ]
     },
     "rosacea": {
-        "rule": "For rosacea-prone skin, choose soothing and anti-inflammatory ingredients. Azelaic acid can reduce redness and bumps. Niacinamide, green tea extract, and colloidal oatmeal are also calming. Avoid harsh exfoliants, alcohol, and fragrance, as these can trigger flare-ups.",
+        "rule": "For rosacea-prone skin, opt for soothing, anti-inflammatory ingredients. Azelaic acid reduces redness, while niacinamide, green tea extract, and colloidal oatmeal calm irritation. Avoid harsh exfoliants, alcohol, and fragrance, which can trigger flare-ups.",
         "ingredients": [
             "azelaic acid", "niacinamide", "green tea extract", "colloidal oatmeal"
+        ],
+        "avoid": [
+            "alcohol", "fragrance", "menthol", "eucalyptus oil", "harsh exfoliants"
         ]
     },
     "eczema": {
-        "rule": "For eczema, prioritize barrier-strengthening and soothing ingredients. Ceramides, fatty acids, and colloidal oatmeal help repair the skin barrier. Use fragrance-free and hypoallergenic products. Avoid harsh cleansers and use rich, occlusive moisturizers like petrolatum and shea butter to prevent water loss.",
+        "rule": "For eczema, focus on barrier-strengthening and soothing ingredients. Ceramides and fatty acids help repair the skin. Use fragrance-free, hypoallergenic products. Rich occlusive moisturizers like petrolatum and shea butter prevent water loss and soothe irritation.",
         "ingredients": [
-            "ceramides", "fatty acids", "colloidal oatmeal", "fragrance-free products",
-            "petrolatum", "shea butter"
+            "ceramides", "fatty acids", "colloidal oatmeal", 
+            "fragrance-free products", "petrolatum", "shea butter"
+        ],
+        "avoid": [
+            "fragrance", "essential oils", "alcohol", "harsh cleansers", "sulfates"
         ]
     },
     "sun_damage": {
-        "rule": "For sun-damaged skin, prioritize repairing and protecting ingredients. Antioxidants like vitamin C, E, and niacinamide help repair damage. Use moisturizers with ceramides and peptides to support the skin barrier. Sunscreen with SPF 30 or higher is essential to prevent further damage.",
+        "rule": "For sun-damaged skin, prioritize antioxidants and repair agents. Vitamin C, E, and niacinamide help reverse damage, while ceramides and peptides strengthen the skin barrier. Daily sunscreen with SPF 30 or higher is crucial to prevent further harm.",
         "ingredients": [
-            "vitamin C", "vitamin E", "niacinamide", "ceramides", "peptides", "sunscreen"
+            "vitamin C", "vitamin E", "niacinamide", 
+            "ceramides", "peptides", "sunscreen"
+        ],
+        "avoid": [
+            "alcohol", "fragrance", "harsh exfoliants", "unprotected sun exposure"
         ]
     }
 }
 
+
 # Cilt bakım bileşenlerinin uyumsuzlukları
 INCOMPATIBLE_INGREDIENTS = {
-    "retinol": ["salicylic acid", "benzoyl peroxide", "vitamin C"],
-    "salicylic acid": ["retinol", "benzoyl peroxide"],
-    "benzoyl peroxide": ["retinol", "salicylic acid"],
+    "retinol": ["salicylic acid", "benzoyl peroxide", "vitamin C", "adapalene"],
+    "salicylic acid": ["retinol", "benzoyl peroxide", "adapalene"],
+    "benzoyl peroxide": ["retinol", "salicylic acid", "adapalene"],
     "vitamin C": ["retinol"]
 }
 
@@ -107,42 +146,13 @@ def check_compatibility(ingredients):
                     incompatible.append((ingredient, incompatible_ingredient))
     return incompatible
 
-# Semantik Benzerlik Hesaplama
-# def analyze_skin_problem(text):
-#     """Kullanıcının cilt problemi hakkında öneriler sunar."""
-#     doc = nlp(text.lower())  # Metni küçük harfe çevir ve NLP analizi yap
-#     recommendations = set()  # Set kullanarak tekrarı önleyeceğiz
-#     ingredients = set()  # Kullanıcıya hangi bileşenlerin önerildiğini takip edeceğiz
 
-#     for problem, data in SKINCARE_KEYWORDS.items():
-#         for keyword in data:
-#             if any(re.search(r"\b" + re.escape(keyword) + r"\b", text.lower()) for keyword in SKINCARE_KEYWORDS[problem]):
-#                 recommendations.add(SKINCARE_RULES[problem]["rule"])
-#                 # İlgili bileşenleri öneriler listesine ekleyelim
-#                 ingredients.update(SKINCARE_RULES[problem]["ingredients"])
-
-#     # İçerik uyumluğunu kontrol et
-#     incompatible = check_compatibility(list(ingredients))
-    
-#     # Uyumlu olmayan bileşenler varsa, kullanıcıya bildirelim
-#     # If there are incompatible ingredients, notify the user
-#     if incompatible:
-#         incompatible_str = " and ".join(
-#             [f"'{item[0]}' with '{item[1]}'" for item in incompatible]
-#         )
-#         warning_message = (
-#             f"Warning: The following ingredients may not work well together: {incompatible_str}. "
-#             "You may consider using these ingredients at different times or avoid using one of them."
-#         )
-#         return list(recommendations) + [warning_message]
-
-#     # Eğer öneri yoksa kullanıcıya daha fazla detay verin dedik
-#     return list(recommendations) if recommendations else ["Lütfen daha fazla detay verin."]
 def analyze_skin_problem(text):
     """Kullanıcının cilt problemi hakkında öneriler sunar."""
     doc = nlp(text.lower())  # Metni küçük harfe çevir ve NLP analizi yap
     recommendations = set()  # Set kullanarak tekrarı önleyeceğiz
     ingredients = set()  # Kullanıcıya hangi bileşenlerin önerildiğini takip edeceğiz
+    avoid= set()
 
     # Tüm anahtar kelimeler üzerinde döngü
     for problem, data in SKINCARE_KEYWORDS.items():
@@ -151,20 +161,31 @@ def analyze_skin_problem(text):
                 recommendations.add(SKINCARE_RULES[problem]["rule"])
                 # İlgili bileşenleri öneriler listesine ekleyelim
                 ingredients.update(SKINCARE_RULES[problem]["ingredients"])
+                avoid.update(SKINCARE_RULES[problem]["avoid"])
 
     # İçerik uyumluğunu kontrol et
     incompatible = check_compatibility(list(ingredients))
 
     warning_message = ""
-    # Uyumlu olmayan bileşenler varsa, kullanıcıya bildirelim
+   
+
     if incompatible:
-        incompatible_str = " and ".join(
-            [f"'{item[0]}' with '{item[1]}'" for item in incompatible]
+    # Tekrar eden öğeleri silmek için set kullanıyoruz, önce her çiftin bileşenlerini sıralıyoruz
+        unique_incompatible = set(
+            tuple(sorted(item)) for item in incompatible
         )
+        
+        # HTML formatında uyumsuz bileşen çiftlerini listelemek
+        incompatible_str = "<br>".join(
+            [f"'{item[0]}' & '{item[1]}'" for item in unique_incompatible]
+        )
+        
         warning_message = (
-            f"Warning: The following ingredients may not work well together: {incompatible_str}. "
-            "You may consider using these ingredients at different times or avoid using one of them."
+            f"Uyarı: Aşağıdaki bileşenler birlikte kullanıldığında uyumsuz olabilir:<br><br>"
+            f"{incompatible_str}<br><br>"
+            "Bu bileşenleri farklı zamanlarda kullanmayı ya da birini kullanmamayı düşünebilirsiniz."
         )
 
+
     # İçeriği döndürelim
-    return list(recommendations), list(ingredients), warning_message
+    return list(recommendations), list(ingredients), list(avoid), warning_message
