@@ -12,3 +12,6 @@ python-dotenv
 Pillow
 gunicorn
 dj-database-url
+spacy
+scikit-learn
+pandas
